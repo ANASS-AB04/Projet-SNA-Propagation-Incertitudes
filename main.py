@@ -13,42 +13,22 @@ from pathlib import Path
 
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy import stats
 
-from chaleur.modele import Chaleur1D, zones
+from chaleur.cas import CAS, M
 from chaleur.solveurs import transitoire, stationnaire
 from chaleur.monte_carlo import tirer, monte_carlo, statistiques
 from chaleur.affichage import tracer
 
-# Paramètres
-N, M = 50, 3                                                   # noeuds intérieurs, zones
+# Paramètres (maillage N, zones M et lois : chaleur/cas.py)
 n_tirages, graine = 500, 2026
 t = np.linspace(0, 1, 51)                                      # instants de sortie
 dossier = Path(__file__).resolve().parent / "resultats"
 
-
-def par_zone(x, nu):
-    """nu_m sur la zone m : donnée aléatoire."""
-    return nu[zones(x, M)]
-
-
-def nominale(x, nu):
-    """1 partout, indépendante de nu : donnée déterministe."""
-    return np.ones_like(x)
-
-
-# nom : (titre, conductivité, source, loi de chaque nu_m)
-cas = {
-    "conductivite": ("Conductivité aléatoire k_m ~ LogN(0, 0.3²), source f = 1",
-                     par_zone, nominale, stats.lognorm(s=0.3)),          # médiane 1
-    "source": ("Source aléatoire s_m ~ U(0.5, 1.5), conductivité k = 1",
-               nominale, par_zone, stats.uniform(0.5, 1.0)),             # moyenne 1
-}
-
 dossier.mkdir(exist_ok=True)
-for nom, (titre, conductivite, source, loi) in cas.items():
+for nom, cas in CAS.items():
+    titre, loi = cas.titre, cas.loi
     print(f"\n{titre}")
-    pb = Chaleur1D(N, conductivite, source, u0=lambda x: np.sin(np.pi * x))
+    pb = cas.probleme()
 
     # Monte Carlo : une résolution déterministe par tirage de nu
     debut = time.perf_counter()
